@@ -51,8 +51,14 @@ class UserLogin(UserBase):
     password: str
 
 
+class UserUpdate(BaseModel):
+    name: Optional[str] = Field(None, description="User's name")
+    email: Optional[EmailStr] = Field(None, description="User's email")
+
+
 class UserResponse(UserBase):
     id: uuid.UUID
+    name: str
     is_active: bool
     is_admin: bool
     client_id: Optional[uuid.UUID] = None

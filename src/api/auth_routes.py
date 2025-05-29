@@ -33,6 +33,7 @@ from src.config.database import get_db
 from src.models.models import User
 from src.schemas.user import (
     UserCreate,
+    UserUpdate,
     UserResponse,
     UserLogin,
     TokenResponse,
@@ -49,6 +50,7 @@ from src.services.user_service import (
     forgot_password,
     reset_password,
     change_password,
+    update_user_profile,
 )
 from src.services.auth_service import (
     create_access_token,
@@ -325,3 +327,33 @@ async def change_user_password(
 
     logger.info(f"Password changed successfully for user: {current_user.email}")
     return {"message": message}
+
+
+@router.put("/profile", response_model=UserResponse)
+async def update_user_profile_route(
+    profile_data: UserUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Update the authenticated user's profile information
+
+    Args:
+        profile_data: Profile data to update (name and/or email)
+        db: Database session
+        current_user: Authenticated user
+
+    Returns:
+        UserResponse: Updated user data
+
+    Raises:
+        HTTPException: If there is an error in the update process
+    """
+    user, message = update_user_profile(db, current_user.id, profile_data)
+
+    if not user:
+        logger.warning(f"Failed to update profile for user: {current_user.email}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=message)
+
+    logger.info(f"Profile updated successfully for user: {current_user.email}")
+    return user

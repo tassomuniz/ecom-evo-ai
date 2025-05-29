@@ -30,7 +30,7 @@
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from src.models.models import User, Client
-from src.schemas.user import UserCreate
+from src.schemas.user import UserCreate, UserUpdate
 from src.utils.security import get_password_hash, verify_password, generate_token
 from src.services.email_service import (
     send_verification_email,
@@ -95,6 +95,7 @@ def create_user(
             # Create user
             user = User(
                 email=user_data.email,
+                name=user_data.name,
                 password_hash=get_password_hash(user_data.password),
                 client_id=local_client_id,
                 is_admin=is_admin,
@@ -523,3 +524,81 @@ def change_password(
     except Exception as e:
         logger.error(f"Unexpected error changing password: {str(e)}")
         return False, f"Unexpected error: {str(e)}"
+
+
+def update_user_profile(
+    db: Session, user_id: uuid.UUID, user_update_data: "UserUpdate"
+) -> Tuple[Optional[User], str]:
+    """
+    Update user profile information (name and email)
+
+    Args:
+        db: Database session
+        user_id: User ID to update
+        user_update_data: Data to update
+
+    Returns:
+        Tuple[Optional[User], str]: Tuple with updated user (or None in case of error) and status message
+    """
+    try:
+        # Get the current user
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            logger.warning(f"Attempt to update non-existent user: {user_id}")
+            return None, "User not found"
+
+        # Check if email is being changed and if it already exists
+        if user_update_data.email and user_update_data.email != user.email:
+            existing_user = (
+                db.query(User)
+                .filter(User.email == user_update_data.email)
+                .filter(User.id != user_id)
+                .first()
+            )
+            if existing_user:
+                logger.warning(
+                    f"Attempt to update user {user_id} with existing email: {user_update_data.email}"
+                )
+                return None, "Email already in use"
+
+        # Update fields if provided
+        updated_fields = []
+        if user_update_data.name is not None:
+            user.name = user_update_data.name
+            updated_fields.append("name")
+
+        if user_update_data.email is not None:
+            user.email = user_update_data.email
+            updated_fields.append("email")
+            # If email is changed, mark as unverified for security
+            user.email_verified = False
+            user.is_active = False
+            updated_fields.append("email_verification_reset")
+
+        # If no fields to update
+        if not updated_fields:
+            logger.info(f"No fields to update for user: {user_id}")
+            return user, "No changes provided"
+
+        db.commit()
+        logger.info(
+            f"User profile updated successfully for user {user_id}. Updated fields: {', '.join(updated_fields)}"
+        )
+
+        # Determine response message
+        if "email_verification_reset" in updated_fields:
+            return (
+                user,
+                "Profile updated successfully. Email verification has been reset - please verify your new email address.",
+            )
+        else:
+            return user, "Profile updated successfully"
+
+    except SQLAlchemyError as e:
+        db.rollback()
+        logger.error(f"Error updating user profile: {str(e)}")
+        return None, f"Error updating profile: {str(e)}"
+
+    except Exception as e:
+        logger.error(f"Unexpected error updating user profile: {str(e)}")
+        return None, f"Unexpected error: {str(e)}"
