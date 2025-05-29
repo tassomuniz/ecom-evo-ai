@@ -1,0 +1,13 @@
+version: "3.8"
+
+services:
+  api:
+    build: .
+    volumes:
+      - ./src:/app/src          # Volume para desenvolvimento live reload
+      - ./logs:/app/logs
+      - ./static:/app/static
+      - ./migrations:/app/migrations  # Volume para migrações
+    environment:
+      - PYTHONPATH=/app
+    command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload 
