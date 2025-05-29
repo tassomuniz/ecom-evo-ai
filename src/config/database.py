@@ -31,10 +31,25 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from src.config.settings import settings
+import logging
+
+logger = logging.getLogger(__name__)
 
 POSTGRES_CONNECTION_STRING = settings.POSTGRES_CONNECTION_STRING
 
-engine = create_engine(POSTGRES_CONNECTION_STRING)
+# Configure engine based on database type
+if POSTGRES_CONNECTION_STRING.startswith("sqlite"):
+    # SQLite specific configuration
+    engine = create_engine(
+        POSTGRES_CONNECTION_STRING,
+        connect_args={"check_same_thread": False}  # Needed for SQLite with FastAPI
+    )
+    logger.info(f"Using SQLite database: {POSTGRES_CONNECTION_STRING}")
+else:
+    # PostgreSQL configuration
+    engine = create_engine(POSTGRES_CONNECTION_STRING)
+    logger.info(f"Using PostgreSQL database")
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
