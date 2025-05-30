@@ -130,3 +130,21 @@ celerybeat-schedule
 Thumbs.db
 
 uv.lock
+
+# Credentials and sensitive data
+creds/
+*.json
+!*.example.json
+!package.json
+!tsconfig.json
+!components.json
+!pyproject.json
+
+# Test files
+test_api.py
+test_mcp_api.py
+login.json
+
+# Temporary integration submodules
+integrations/mcp-google-ads/
+integrations/meta-ads-mcp/
