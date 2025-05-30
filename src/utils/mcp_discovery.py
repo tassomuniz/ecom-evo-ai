@@ -32,7 +32,7 @@ import asyncio
 async def _discover_async(config_json: Dict[str, Any]) -> List[Dict[str, Any]]:
     """Return a list[dict] with the tool metadata advertised by the MCP server."""
 
-    from src.services.mcp_service import MCPService
+    from src.services.adk.mcp_service import MCPService
 
     service = MCPService()
     tools, exit_stack = await service._connect_to_mcp_server(config_json)
